@@ -10,7 +10,6 @@ namespace Sotvokun\Container\Aop;
 use ArrayObject;
 
 /**
- * 
  * @template T of object
  */
 interface MethodInvocation
@@ -33,8 +32,6 @@ interface MethodInvocation
      * <p>For instance, the target object for an invocation.
      *
      * @return T (can be null if the accessible object is static)
-     *
-     * @psalm-mutation-free
      */
     public function getThis();
 

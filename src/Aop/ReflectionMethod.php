@@ -18,8 +18,6 @@ final class ReflectionMethod extends \ReflectionMethod
 {
     /**
      * @return ReflectionClass<object>
-     *
-     * @psalm-external-mutation-free
      */
     #[Override]
     public function getDeclaringClass(): ReflectionClass
@@ -31,7 +29,7 @@ final class ReflectionMethod extends \ReflectionMethod
 
     /**
      * Get all attributes as instantiated objects
-     * 
+     *
      * @return list<object>
      */
     public function getAnnotations(): array

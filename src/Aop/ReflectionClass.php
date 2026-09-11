@@ -14,7 +14,6 @@ use ReflectionAttribute;
 use ReturnTypeWillChange;
 
 use function array_map;
-use function get_class_methods;
 
 /**
  * @template T of object
@@ -33,7 +32,7 @@ final class ReflectionClass extends \ReflectionClass
 
         return array_map(
             static fn($attribute) => $attribute->newInstance(),
-            $attributes
+            $attributes,
         );
     }
 
@@ -60,23 +59,19 @@ final class ReflectionClass extends \ReflectionClass
      * @param int|null $filter
      *
      * @return list<ReflectionMethod>
-     *
-     * @psalm-external-mutation-free
      */
     #[Override]
     public function getMethods($filter = null): array
     {
-        unset($filter);
+        $nativeMethods = parent::getMethods($filter);
         $methods = [];
-        $methodNames = get_class_methods($this->name);
-        foreach ($methodNames as $methodName) {
-            $methods[] = new ReflectionMethod($this->name, $methodName);
+        foreach ($nativeMethods as $method) {
+            $methods[] = new ReflectionMethod($method->class, $method->name);
         }
 
         return $methods;
     }
 
-    /** @psalm-external-mutation-free */
     #[Override]
     public function getConstructor(): \ReflectionMethod|null
     {
@@ -90,8 +85,6 @@ final class ReflectionClass extends \ReflectionClass
 
     /**
      * @return ReflectionClass<object>|false
-     *
-     * @psalm-external-mutation-free
      */
     #[Override]
     #[ReturnTypeWillChange]

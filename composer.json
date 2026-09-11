@@ -1,8 +1,15 @@
 {
     "name": "sotvokun/container",
+    "description": "An attribute-driven AOP extension for the Illuminate container.",
     "type": "library",
-    "license": "UNLICENSE",
-    "version": "1.0.0",
+    "license": "MIT",
+    "keywords": [
+        "aop",
+        "container",
+        "dependency-injection",
+        "illuminate",
+        "psr-11"
+    ],
     "autoload": {
         "psr-4": {
             "Sotvokun\\Container\\": "src/"
@@ -15,15 +22,28 @@
         }
     ],
     "require": {
+        "php": "^8.3",
         "illuminate/container": "^13.31",
         "ray/aop": "^2.20",
-        "composer/class-map-generator": "^1.7"
+        "composer/class-map-generator": "^1.7",
+        "symfony/filesystem": "^7.4"
+    },
+    "provide": {
+        "psr/container-implementation": "1.1 || 2.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^11.5",
-        "vimeo/psalm": "^6.0"
+        "phpstan/phpstan": "^2.1"
     },
     "scripts": {
-        "psalm": "psalm --no-cache"
+        "format": "pretty-php",
+        "format:check": "pretty-php --check",
+        "test": "@php vendor/bin/phpunit --exclude-group upstream",
+        "test:all": "@php vendor/bin/phpunit",
+        "test:upstream": "@php vendor/bin/phpunit --group upstream",
+        "test:unit": "@php vendor/bin/phpunit --testsuite Unit --exclude-group upstream",
+        "test:integration": "@php vendor/bin/phpunit --testsuite Integration --exclude-group upstream",
+        "test:process": "@php vendor/bin/phpunit --testsuite Process --exclude-group upstream",
+        "analysis": "@php vendor/bin/phpstan analyse --configuration=phpstan.neon --no-progress --debug"
     }
 }

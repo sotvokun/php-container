@@ -1,0 +1,11 @@
+{
+    "src": [
+        "src",
+        "tests"
+    ],
+    "exclude": "~tests[\\\\/]Fixtures[\\\\/]Generated[\\\\/]~",
+    "noSimplifyStrings": true,
+    "noSimplifyNumbers": true,
+    "sortImportsBy": "name",
+    "psr12": true
+}

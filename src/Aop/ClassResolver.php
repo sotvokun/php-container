@@ -7,28 +7,35 @@ namespace Sotvokun\Container\Aop;
 use Composer\ClassMapGenerator\ClassMapGenerator;
 use InvalidArgumentException;
 use LogicException;
+use Symfony\Component\Filesystem\Path;
 
-use function is_a;
 use function is_dir;
 
 final class ClassResolver
 {
-    /** @var array<class-string,WeavableClassMetadata> */
+    /**
+     * @var array<class-string,WeavableClassMetadata>
+     */
     private array $targets = [];
 
-    /** @var array<string, string> */
+    /**
+     * @var array<string, string>
+     */
     private array $classMap;
 
-    /** @var array<string, true> */
+    /**
+     * @var array<string, true>
+     */
     private array $inspected = [];
 
     /**
-     * @param list<string> $directories 
+     * @param list<string> $directories
      */
     public function __construct(array $directories)
     {
         $classMapGenerator = (new ClassMapGenerator())->avoidDuplicateScans();
         foreach ($directories as $directory) {
+            $directory = Path::canonicalize($directory);
             if (is_dir($directory)) {
                 $classMapGenerator->scanPaths($directory);
             }
@@ -37,7 +44,9 @@ final class ClassResolver
         $this->classMap = $classMapGenerator->getClassMap()->getMap();
     }
 
-    /** @param class-string $class */
+    /**
+     * @param class-string $class
+     */
     public function shouldWeave(string $class): bool
     {
         $this->inspectIfScanned($class);
@@ -61,8 +70,8 @@ final class ClassResolver
         return $this->targets[$class];
     }
 
-    /** 
-     * @param class-string $class 
+    /**
+     * @param class-string $class
      */
     private function inspectIfScanned(string $class): void
     {
@@ -76,7 +85,6 @@ final class ClassResolver
         }
 
         if (!class_exists($class, false)) {
-            /** @psalm-suppress UnresolvableInclude The path is resolved from Composer's class map at runtime. */
             require_once $this->classMap[$class];
         }
         if (class_exists($class, false)) {
@@ -92,9 +100,7 @@ final class ClassResolver
     {
         $reflection = new \ReflectionClass($class);
 
-        /**
-         * @var list<array{\ReflectionMethod,list<\ReflectionAttribute<InterceptorProvider>>}>
-         */
+        /** @var list<array{\ReflectionMethod,list<\ReflectionAttribute<InterceptorProvider>>}> */
         $aspectedMethods = [];
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
             if ($method->getDeclaringClass()->getName() !== $class) {
@@ -120,12 +126,7 @@ final class ClassResolver
 
             $methodAttributes = [];
             foreach ($attributes as $attribute) {
-                /** @var class-string<InterceptorProvider> */
                 $attributeName = $attribute->getName();
-                if (!is_a($attributeName, InterceptorProvider::class, true)) {
-                    throw new LogicException("Unexpected AOP attribute {$attributeName}.");
-                }
-
                 $methodAttributes[] = $attributeName;
             }
 

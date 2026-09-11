@@ -9,7 +9,9 @@ use Sotvokun\Container\Aop\MethodInterceptor;
 
 final readonly class RayMethodInterceptorAdapter implements \Ray\Aop\MethodInterceptor
 {
-    public function __construct(private MethodInterceptor $interceptor) {}
+    public function __construct(
+        private MethodInterceptor $interceptor
+    ) {}
 
     public function invoke(RayMethodInvocation $invocation): mixed
     {

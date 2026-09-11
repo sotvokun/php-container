@@ -9,29 +9,37 @@ use Ray\Aop\MethodInvocation as RayMethodInvocation;
 use Sotvokun\Container\Aop\MethodInvocation;
 use Sotvokun\Container\Aop\ReflectionMethod;
 
-/** @implements MethodInvocation<object> */
+/**
+ * @implements MethodInvocation<object>
+ */
 final readonly class RayMethodInvocationAdapter implements MethodInvocation
 {
-    public function __construct(private RayMethodInvocation $invocation) {}
+    public function __construct(
+        private RayMethodInvocation $invocation
+    ) {}
 
     public function proceed(): mixed
     {
         return $this->invocation->proceed();
     }
 
-    /** @psalm-external-mutation-free */
+    // @phpstan-ignore-next-line return.unusedType
     public function getThis(): object|null
     {
         return $this->invocation->getThis();
     }
 
-    /** @return ArrayObject<int, mixed> */
+    /**
+     * @return ArrayObject<int, mixed>
+     */
     public function getArguments(): ArrayObject
     {
         return $this->invocation->getArguments();
     }
 
-    /** @return ArrayObject<non-empty-string, mixed> */
+    /**
+     * @return ArrayObject<non-empty-string, mixed>
+     */
     public function getNamedArguments(): ArrayObject
     {
         return $this->invocation->getNamedArguments();

@@ -11,7 +11,9 @@ use Sotvokun\Container\Aop\Adapter\RayMethodInterceptorAdapter;
 
 final class Weaver implements WeaverInterface
 {
-    /** @param non-empty-string $generatedClassDirectory */
+    /**
+     * @param non-empty-string $generatedClassDirectory
+     */
     public function __construct(
         private readonly IlluminateContainer $container,
         private readonly ClassResolver $resolver,
@@ -20,10 +22,10 @@ final class Weaver implements WeaverInterface
 
     /**
      * @template T of object
-     * 
-     * @param class-string<T> $class 
-     * @param list<mixed> $arguments 
-     * @return T 
+     *
+     * @param class-string<T> $class
+     * @param list<mixed> $arguments
+     * @return T
      */
     public function newInstance(string $class, array $arguments): object
     {
@@ -34,7 +36,7 @@ final class Weaver implements WeaverInterface
     }
 
     /**
-     * @param class-string $class 
+     * @param class-string $class
      * @return class-string
      */
     public function weave(string $class): string
@@ -51,8 +53,9 @@ final class Weaver implements WeaverInterface
         $interceptors = [];
         foreach ($attribute::interceptors() as $interceptor) {
             $instance = is_string($interceptor) ? $this->container->make($interceptor) : $interceptor;
+            // @phpstan-ignore-next-line instanceof.alwaysTrue
             if (!$instance instanceof MethodInterceptor) {
-                throw new InvalidArgumentException("{$attribute} must return Sotvokun\\Container\\Aop\\MethodInterceptor instances or class names.");
+                throw new InvalidArgumentException("{$attribute} must return Sotvokun\Container\Aop\MethodInterceptor instances or class names.");
             }
             $interceptors[] = new RayMethodInterceptorAdapter($instance);
         }
@@ -67,7 +70,9 @@ final class Weaver implements WeaverInterface
         return new \Ray\Aop\Weaver($this->bindFor($class), $this->generatedClassDirectory);
     }
 
-    /** @param class-string $class */
+    /**
+     * @param class-string $class
+     */
     private function bindFor(string $class): Bind
     {
         $bind = new Bind();

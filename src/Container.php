@@ -7,14 +7,16 @@ namespace Sotvokun\Container;
 use Illuminate\Container\Container as IlluminateContainer;
 use Illuminate\Contracts\Container\CircularDependencyException;
 use Illuminate\Contracts\Container\SelfBuilding;
+use InvalidArgumentException;
 use ReflectionClass;
 use Sotvokun\Container\Aop\ClassResolver;
 use Sotvokun\Container\Aop\Weaver;
 use Sotvokun\Container\Aop\WeaverInterface;
+use Symfony\Component\Filesystem\Path;
 
 use function is_string;
 
-final class Container extends IlluminateContainer
+class Container extends IlluminateContainer
 {
     private ClassResolver|null $classResolver = null;
 
@@ -28,8 +30,65 @@ final class Container extends IlluminateContainer
      */
     public function withAop(array $directories, string $generatedClassDirectory): void
     {
+        foreach ([...$directories, $generatedClassDirectory] as $directory) {
+            if (!Path::isAbsolute($directory)) {
+                throw new InvalidArgumentException(sprintf(
+                    'AOP directories must use absolute paths; received "%s".',
+                    $directory,
+                ));
+            }
+        }
+
+        $normalizedGeneratedDirectory = $this->resolvePath($generatedClassDirectory);
+        if (!is_dir($normalizedGeneratedDirectory)) {
+            throw new InvalidArgumentException(sprintf(
+                'AOP generated class directory "%s" must be an existing directory.',
+                $generatedClassDirectory,
+            ));
+        }
+
+        foreach ($directories as $directory) {
+            $normalizedScanDirectory = $this->resolvePath($directory);
+            if (
+                $normalizedScanDirectory !== '' &&
+                $normalizedGeneratedDirectory !== '' &&
+                Path::isBasePath($normalizedScanDirectory, $normalizedGeneratedDirectory)
+            ) {
+                throw new InvalidArgumentException(sprintf(
+                    'AOP generated class directory "%s" must be outside scan directory "%s".',
+                    $generatedClassDirectory,
+                    $directory,
+                ));
+            }
+        }
+
         $this->classResolver = new ClassResolver($directories);
         $this->weaver = new Weaver($this, $this->classResolver, $generatedClassDirectory);
+    }
+
+    private function resolvePath(string $path): string
+    {
+        $absolutePath = Path::canonicalize($path);
+        $candidate = $absolutePath;
+        $missingSegments = [];
+        $resolved = realpath($candidate);
+        while ($resolved === false) {
+            $parent = Path::getDirectory($candidate);
+            if ($parent === '' || $parent === $candidate) {
+                break;
+            }
+
+            array_unshift($missingSegments, Path::makeRelative($candidate, $parent));
+            $candidate = $parent;
+            $resolved = realpath($candidate);
+        }
+
+        $normalized = $absolutePath;
+        if ($resolved !== false) {
+            $normalized = Path::join($resolved, ...$missingSegments);
+        }
+
+        return PHP_OS_FAMILY === 'Windows' ? strtolower($normalized) : $normalized;
     }
 
     /**
@@ -43,27 +102,24 @@ final class Container extends IlluminateContainer
     public function build($concrete)
     {
         if (
-            is_string($concrete)
-            && $this->classResolver !== null
-            && $this->classResolver->shouldWeave($concrete)
-            && $this->weaver !== null
+            is_string($concrete) &&
+            $this->classResolver !== null &&
+            $this->classResolver->shouldWeave($concrete) &&
+            $this->weaver !== null
         ) {
-            // Preserve the explicit factory contract of self-building classes.
-            if (
-                is_a($concrete, SelfBuilding::class, true)
-                && ! in_array($concrete, $this->buildStack, true)
-            ) {
+            // Preserve self-building factories and their ordinary build fallback.
+            if (is_a($concrete, SelfBuilding::class, true)) {
                 /** @var TClass $instance */
                 $instance = parent::build($concrete);
                 return $instance;
             }
 
             $reflector = new ReflectionClass($concrete);
+            // @phpstan-ignore-next-line function.impossibleType
             if (in_array($concrete, $this->buildStack, true)) {
                 throw new CircularDependencyException('Circular dependency detected while building an AOP target.');
             }
 
-            /** @psalm-suppress InvalidPropertyAssignmentValue Illuminate documents buildStack as array[] but stores class names and closure IDs. */
             $this->buildStack[] = $concrete;
 
             try {
@@ -84,7 +140,6 @@ final class Container extends IlluminateContainer
             return $instance;
         }
 
-        /** @psalm-suppress ArgumentTypeCoercion The inherited method accepts the same closure contract. */
         return parent::build($concrete);
     }
 }
