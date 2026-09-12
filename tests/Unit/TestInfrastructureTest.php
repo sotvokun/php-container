@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use Composer\InstalledVersions;
 use Illuminate\Container\Container as IlluminateContainer;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use Tests\Fixtures\Aop\EventRecorder;
@@ -63,11 +64,18 @@ final class TestInfrastructureTest extends IsolatedTestCase
         );
     }
 
-    public function testT07LockedVersionsAndEnvironmentMatrixAreRecorded(): void
+    public function testT07RuntimeAndInstalledDependenciesMatchTheTestBaseline(): void
     {
-        $matrix = file_get_contents(dirname(__DIR__, 2) . '/docs/tests/2026-09-11 TEST REPORT (ZH).md');
-        self::assertIsString($matrix);
-        self::assertStringContainsString('illuminate/container | v13.31.0', $matrix);
-        self::assertStringContainsString('Windows Server / PowerShell', $matrix);
+        self::assertGreaterThanOrEqual(80400, PHP_VERSION_ID);
+
+        $contents = file_get_contents(dirname(__DIR__, 2) . '/composer.lock');
+        self::assertIsString($contents);
+        $lock = json_decode($contents, true, flags: JSON_THROW_ON_ERROR);
+
+        foreach ([...$lock['packages'], ...$lock['packages-dev']] as $package) {
+            $name = $package['name'];
+            self::assertTrue(InstalledVersions::isInstalled($name), "Missing locked dependency: {$name}");
+            self::assertSame($package['version'], InstalledVersions::getPrettyVersion($name), "Installed version differs from composer.lock: {$name}");
+        }
     }
 }

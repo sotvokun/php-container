@@ -13,6 +13,8 @@ interface WeaverInterface
     public function newInstance(string $class, array $arguments): object;
 
     /**
+     * Prepare a stable proxy class without resolving interceptor providers.
+     *
      * @param class-string $class
      * @return class-string
      */

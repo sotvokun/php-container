@@ -23,7 +23,7 @@ final class GeneratedClassTest extends IsolatedTestCase
         require_once $this->fixtures() . '/GeneratedFixtures.php';
         $container = $this->container();
         $container->instance(GeneratedLog::class, new GeneratedLog());
-        $container->withAop([$this->fixtures()], $generatedDirectory);
+        $container->enableAop([$this->fixtures()], $generatedDirectory);
 
         return $container;
     }
@@ -43,7 +43,7 @@ final class GeneratedClassTest extends IsolatedTestCase
         self::assertDirectoryDoesNotExist($missing);
         try {
             $this->configuredContainer($missing);
-            self::fail('G01 expected a missing generation directory to be rejected by withAop().');
+            self::fail('G01 expected a missing generation directory to be rejected by enableAop().');
         } catch (\InvalidArgumentException $exception) {
             self::assertStringContainsString('must be an existing directory', $exception->getMessage());
         }
@@ -96,7 +96,7 @@ final class GeneratedClassTest extends IsolatedTestCase
         $container = $this->container();
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('absolute paths');
-        $container->withAop(['tests/Fixtures/Generated'], $this->temporaryDirectory->generatedClasses());
+        $container->enableAop(['tests/Fixtures/Generated'], $this->temporaryDirectory->generatedClasses());
     }
 
     public function testG03RepeatedCreationReusesProxyWithoutRedeclarationOrExtraAdvice(): void
@@ -129,7 +129,7 @@ final class GeneratedClassTest extends IsolatedTestCase
         self::assertTrue(mkdir($nested));
         foreach ([$root, $nested] as $generated) {
             try {
-                $container->withAop([$root], $generated);
+                $container->enableAop([$root], $generated);
                 self::fail('G08 expected a generation directory inside the scan tree to be rejected.');
             } catch (\InvalidArgumentException $exception) {
                 self::assertStringContainsString('must be outside scan directory', $exception->getMessage());
@@ -140,7 +140,7 @@ final class GeneratedClassTest extends IsolatedTestCase
             $link = $this->temporaryDirectory->path() . '/scan-link';
             if (@symlink($root, $link)) {
                 try {
-                    $container->withAop([$root], $link . '/generated');
+                    $container->enableAop([$root], $link . '/generated');
                     self::fail('G08 expected a generation directory below a symlinked scan tree to be rejected.');
                 } catch (\InvalidArgumentException $exception) {
                     self::assertStringContainsString('must be outside scan directory', $exception->getMessage());
@@ -153,7 +153,7 @@ final class GeneratedClassTest extends IsolatedTestCase
         $sibling = $this->temporaryDirectory->path() . '/scan-tree-generated';
         self::assertTrue(mkdir($sibling));
         $container->instance(GeneratedLog::class, new GeneratedLog());
-        $container->withAop([$root], $sibling);
+        $container->enableAop([$root], $sibling);
         self::assertSame('outside', $container->make(GeneratedTarget::class)->run('outside'));
         self::assertCount(1, glob($sibling . '/*.php') ?: []);
     }

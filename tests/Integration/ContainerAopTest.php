@@ -62,7 +62,7 @@ final class ContainerAopTest extends IsolatedTestCase
     private function aopContainer(): Container
     {
         $container = $this->container();
-        $container->withAop([$this->fixtureDirectory()], $this->temporaryDirectory->generatedClasses());
+        $container->enableAop([$this->fixtureDirectory()], $this->temporaryDirectory->generatedClasses());
         return $container;
     }
 
@@ -74,7 +74,7 @@ final class ContainerAopTest extends IsolatedTestCase
                 return 'extended';
             }
         };
-        $container->withAop([$this->fixtureDirectory()], $this->temporaryDirectory->generatedClasses());
+        $container->enableAop([$this->fixtureDirectory()], $this->temporaryDirectory->generatedClasses());
         $recorder = new EventRecorder();
         $container->instance(EventRecorder::class, $recorder);
 
@@ -457,7 +457,7 @@ final class ContainerAopTest extends IsolatedTestCase
 
         $secondGeneratedDirectory = $this->temporaryDirectory->path() . DIRECTORY_SEPARATOR . 'generated-two';
         mkdir($secondGeneratedDirectory);
-        $container->withAop(
+        $container->enableAop(
             [dirname(__DIR__) . '/Fixtures/AopAlternate'],
             $secondGeneratedDirectory,
         );
@@ -477,8 +477,8 @@ final class ContainerAopTest extends IsolatedTestCase
         $directory = $this->temporaryDirectory->generatedClasses();
         $left = $this->container();
         $right = $this->container();
-        $left->withAop([$this->fixtureDirectory()], $directory);
-        $right->withAop([$this->fixtureDirectory()], $directory);
+        $left->enableAop([$this->fixtureDirectory()], $directory);
+        $right->enableAop([$this->fixtureDirectory()], $directory);
         $leftRecorder = new EventRecorder();
         $rightRecorder = new EventRecorder();
         $left->instance(EventRecorder::class, $leftRecorder);

@@ -112,7 +112,7 @@ final class WeaverTest extends IsolatedTestCase
         foreach ([new \stdClass(), 7, null] as $invalid) {
             ConfigurableProvider::$items = [$invalid];
             try {
-                $this->weaver()->weave(ConfigurableTarget::class);
+                $this->weaver()->newInstance(ConfigurableTarget::class, []);
                 self::fail('Expected invalid interceptor rejection.');
             } catch (InvalidArgumentException $e) {
                 self::assertStringContainsString(ConfigurableProvider::class, $e->getMessage());
@@ -120,26 +120,28 @@ final class WeaverTest extends IsolatedTestCase
         }
         ConfigurableProvider::$items = [\stdClass::class];
         $this->expectException(InvalidArgumentException::class);
-        $this->weaver()->weave(ConfigurableTarget::class);
+        $this->weaver()->newInstance(ConfigurableTarget::class, []);
     }
 
     public function testW05UnboundInterceptorInterfaceKeepsContainerException(): void
     {
         ConfigurableProvider::$items = [\Tests\Fixtures\Aop\UnboundInterceptor::class];
         $this->expectException(BindingResolutionException::class);
-        $this->weaver()->weave(ConfigurableTarget::class);
+        $this->weaver()->newInstance(ConfigurableTarget::class, []);
     }
 
     public function testW06ProviderFailuresPropagateAndDoNotPoisonRetry(): void
     {
+        // Class generation must not execute even a throwing provider.
+        self::assertTrue(is_a($this->weaver()->weave(ThrowsTarget::class), ThrowsTarget::class, true));
         try {
-            $this->weaver()->weave(ThrowsTarget::class);
+            $this->weaver()->newInstance(ThrowsTarget::class, []);
             self::fail('Expected provider exception.');
         } catch (RuntimeException $e) {
             self::assertSame('provider failed', $e->getMessage());
         }
         try {
-            $this->weaver()->weave(BadReturnTarget::class);
+            $this->weaver()->newInstance(BadReturnTarget::class, []);
             self::fail('Expected return type error.');
         } catch (\TypeError) {
             self::assertTrue(true);
@@ -151,16 +153,17 @@ final class WeaverTest extends IsolatedTestCase
         self::assertSame(['retry:before:run', 'retry:after:run'], $log->events);
     }
 
-    public function testW07EveryWeaveAndNewInstanceResolvesTransientInterceptorsWhileSingletonIsReused(): void
+    public function testW07OnlyNewInstanceResolvesTransientInterceptorsWhileSingletonIsReused(): void
     {
         $container = $this->illuminateContainer();
         $counts = new Counts();
         $container->instance(Counts::class, $counts);
         $weaver = $this->weaver($container);
         $weaver->weave(CountingTarget::class);
+        self::assertSame([], $counts->values);
         $weaver->newInstance(CountingTarget::class, []);
         $weaver->newInstance(CountingTarget::class, []);
-        self::assertSame(3, $counts->values['created']);
+        self::assertSame(2, $counts->values['created']);
         $counts->values['created'] = 0;
         $container->singleton(CountingInterceptor::class);
         $weaver = $this->weaver($container);
@@ -169,16 +172,15 @@ final class WeaverTest extends IsolatedTestCase
         self::assertSame(1, $counts->values['created']);
     }
 
-    public function testW08NonSerializableInterceptorStateProducesObservableSerializationFailures(): void
+    public function testW08ConstructionDoesNotSerializeInterceptorState(): void
     {
         foreach ([new ClosureInterceptor(), new ThrowingSerializeInterceptor()] as $interceptor) {
             ConfigurableProvider::$items = [$interceptor];
-            try {
-                $this->weaver()->weave(ConfigurableTarget::class);
-                self::fail('Expected serialization failure.');
-            } catch (\Throwable $e) {
-                self::assertTrue($e instanceof RuntimeException || $e instanceof \Exception);
-            }
+            $weaver = $this->weaver();
+            $class = $weaver->weave(ConfigurableTarget::class);
+            $instance = $weaver->newInstance(ConfigurableTarget::class, []);
+            self::assertSame($class, $instance::class);
+            self::assertSame('ok', $instance->run());
         }
         ConfigurableProvider::$items = [new ResourceInterceptor()];
         self::assertTrue(is_a($this->weaver()->weave(ConfigurableTarget::class), ConfigurableTarget::class, true));
@@ -186,7 +188,7 @@ final class WeaverTest extends IsolatedTestCase
         self::assertTrue(is_a($this->weaver()->weave(ConfigurableTarget::class), ConfigurableTarget::class, true));
     }
 
-    public function testW09SerializedInterceptorStateCanSelectDifferentGeneratedClassesWithoutLeakingInstances(): void
+    public function testW09InterceptorStateDoesNotChangeGeneratedClassesOrLeakInstances(): void
     {
         $weaver = $this->weaver();
         $first = new StatefulInterceptor();
@@ -197,8 +199,9 @@ final class WeaverTest extends IsolatedTestCase
         $changedState = $weaver->newInstance(ConfigurableTarget::class, []);
         $changedState->run();
         $filesAfterStateChange = count(glob($this->temporaryDirectory->generatedClasses() . '/*.php') ?: []);
-        self::assertNotSame($one::class, $changedState::class);
-        self::assertGreaterThan($filesBeforeStateChange, $filesAfterStateChange);
+        self::assertSame($one::class, $changedState::class);
+        self::assertSame($one::class, $weaver->weave(ConfigurableTarget::class));
+        self::assertSame($filesBeforeStateChange, $filesAfterStateChange);
         self::assertSame(2, $first->calls);
 
         $second = new StatefulInterceptor();

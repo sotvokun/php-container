@@ -48,6 +48,7 @@ final class CountingInterceptor implements MethodInterceptor
 
     public function invoke(MethodInvocation $invocation): mixed
     {
+        $this->counts->values['invoked'] = ($this->counts->values['invoked'] ?? 0) + 1;
         return $invocation->proceed();
     }
 }

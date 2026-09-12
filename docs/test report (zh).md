@@ -1,40 +1,6 @@
-# Container 与 Attribute AOP 完整测试报告
+# 测试报告
 
-报告日期：2026-09-11。当前环境：macOS，PHP 8.4.4，PHPUnit 11.5.56，Illuminate Container 13.31.0，Ray AOP 2.20.2。
-
-本报告已整合原测试计划、测试环境记录及各测试失败报告。状态以本次实际执行为准：`[x]` 表示该编号当前全部通过，`[ ]` 表示至少一个场景失败、尚未验证或仍待验收。
-
-本次执行结果（Windows，PHP 8.4.24 ZTS）：支持范围 `composer test` 为 130 tests / 588 assertions，全部通过；Unit 为 45 / 169、Integration 为 67 / 308、Process 为 18 / 111，全部通过。完整诊断 `composer test:all` 为 140 tests / 614 assertions，1 error、9 failures、1 warning；`composer test:upstream` 精确收集 10 个登记 case，为 30 assertions、1 error、9 failures、1 warning。
-
-## 报告更新说明
-
-| 日期时间 | 更新内容 |
-| --- | --- |
-| 2026-09-11 17:00:15 CST | 删除 C11 中“不存在的生成目录在 `make()` 时导致代理生成失败”子场景。该路径在新契约下会被 `withAop()` 立即拒绝，不再是可达的 C11 构建失败场景；生成目录校验由 G01/G02 覆盖。C11 剩余 5 个测试、12 个断言全部通过，同步刷新 Integration 统计。 |
-| 2026-09-11 17:12:25 CST | ClassResolver 扫描入口统一使用 Symfony Filesystem `Path::canonicalize()`。R03 改为验证当前平台原生路径的空格、中文、尾分隔符和 `.`/`..` 规范化；Windows 反斜杠仅在 Windows 环境断言。R03 以 1 test / 7 assertions 通过，同步刷新 Integration 统计。 |
-| 2026-09-11 21:21:00 CST | 在 Windows（PHP 8.4.24 ZTS）复测 G07：单次运行可通过，但连续 100 次压力运行仅 32 次通过、68 次因 `Ray\Aop\Exception\NotWritableException` 失败。确认是 Ray AOP 2.20.2 使用 `rename()` 并发发布同名代理文件时依赖 POSIX 覆盖语义所致；G07 改为未通过，并记录为 Windows 优先暴露的上游跨平台兼容性问题。 |
-| 2026-09-11 21:35:28 CST | `Container` 解除 `final` 限制，并新增 C18，验证自定义容器子类在保留自身扩展方法的同时仍可启用 AOP、解析目标服务并执行完整拦截器链。C18 以 1 test / 3 assertions 通过，同步刷新 Integration 统计。 |
-| 2026-09-11 22:18:10 CST | 将 A06、S02–S05、S08、S10、G07 的已知 Ray AOP 限制拆分至 PHPUnit `upstream` group。默认 `composer test` 及 Unit、Integration、Process 分套件排除该组并全部通过；`composer test:upstream` 精确复现 10 个登记 case；`composer test:all` 未发现登记外失败。 |
-
-## 第一部分：测试目录
-
-### 环境与版本基线
-
-| 环境 | PHP | 状态 | 执行范围 |
-| --- | --- | --- | --- |
-| macOS（本次报告环境） | 8.4.4 | 已执行 | Unit、Integration、Process |
-| Windows Server / PowerShell | 8.4.24, ZTS, VC17 x64 | 已执行；G07 失败 | G07 定向压力复测；其余 Unit、Integration、Process 沿用历史基线 |
-| Linux x86_64 / PHP CLI 8.4 | 待提供 | 待验证 | Unit、Integration、Process |
-
-| 关键依赖 | 锁定版本 | PHP 约束 |
-| --- | --- | --- |
-| illuminate/container | v13.31.0 | ^8.3 |
-| ray/aop | 2.20.2 | ^8.2 |
-| composer/class-map-generator | 1.7.3 | ^7.2 \|\| ^8.0 |
-| symfony/filesystem | v7.4.18 | >=8.2 |
-| phpunit/phpunit | 11.5.56 | >=8.2 |
-
-当前测试基线的最低 PHP 版本由 Illuminate Container 约束为 PHP 8.3。依赖升级后应重新核对集成契约并更新本报告。
+## 第零部分：报告使用说明
 
 ### 使用规则
 
@@ -58,9 +24,12 @@
 | S | PHP 代理方法和签名边界 | I / X |
 | F | 自定义 Reflection | U |
 | G | 生成目录、代理缓存与进程 | I / X |
+| L | Lazy 延迟注入与 AOP 组合 | I |
 | V | 全套验收流程 | U / I / X / 静态检查 |
 
 类别标记：P0/P1/P2 为优先级；U 为单元测试；I 为真实依赖集成测试；X 为独立进程或环境测试；契约/风险/待定表示断言依据。
+
+## 第一部分：测试项目
 
 ### T：测试基础设施
 
@@ -72,7 +41,7 @@
 - [x] T04 [P0] 可序列化拦截器基线与专用负例
 - [x] T05 [P1] 原生 Illuminate Container 对照 helper
 - [x] T06 [P1] 子进程、超时、退出码及 stderr 捕获
-- [x] T07 [P1] PHP 与锁定依赖环境矩阵
+- [x] T07 [P1] PHP 最低版本与已安装依赖的 composer.lock 一致性
 
 ### C：Container 依赖注入与状态恢复
 
@@ -93,7 +62,7 @@
 - [x] C13 [P1/I/契约] resolving、afterResolving 与 Attribute 回调
 - [x] C14 [P0/I/契约] SelfBuilding 父容器语义
 - [x] C15 [P1/I/待定] 构造期间容器解析及构造栈语义
-- [x] C16 [P1/I/契约] 重复 withAop 配置切换
+- [x] C16 [P1/I/契约] 重复 enableAop 配置切换
 - [x] C17 [P1/I/风险] 多容器共享代理目录的绑定隔离
 - [x] C18 [P1/I/契约] 自定义 Container 子类保留扩展能力及 AOP 行为
 
@@ -129,8 +98,8 @@
 - [x] W05 [P0/I/契约] 非法拦截器值及解析异常
 - [x] W06 [P1/I/契约] Provider 异常与失败后重试
 - [x] W07 [P1/I/契约] transient、singleton 与 Provider 生命周期
-- [x] W08 [P0/I/风险] 不可序列化拦截器状态
-- [x] W09 [P2/I/待定] 拦截器状态参与代理缓存键
+- [x] W08 [P0/I/契约] 构建不序列化拦截器状态
+- [x] W09 [P2/I/契约] 拦截器状态不改变生成类或泄漏实例
 - [x] W10 [P1/I/契约] 非目标类拒绝及独立 Weaver
 - [x] W11 [P1/I/待定] weave-only 实例与绑定安装边界
 
@@ -184,10 +153,29 @@
 - [x] G02 [P1/I/风险] 绝对路径要求、文件路径、空格及中文
 - [x] G03 [P1/I/契约] 同绑定同目录代理复用
 - [x] G04 [P2/X/风险] 新进程加载磁盘代理缓存
-- [x] G05 [P2/X/待定] mtime、绑定及目录缓存键
+- [x] G05 [P2/X/契约] mtime 和目录参与缓存键，拦截器状态不参与
 - [x] G06 [P2/X/风险] 截断、错误、不可读缓存及目录消失
 - [ ] G07 [P2/X/风险] 多进程并发生成（Windows 上游兼容性问题）
 - [x] G08 [P2/I/风险] 生成目录与扫描树隔离及 symlink 防绕过
+
+### L：Lazy 延迟注入与 AOP 组合
+
+对应文件：L01–L12 位于 `tests/Integration/LazyInjectionTest.php`，编号同时记录在对应测试方法的注释中。
+
+- [x] L01 [P0/I/契约] 类绑定延迟构建与容器生命周期：`testClassBindingIsActuallyDelayedAndUsesNormalContainerLifecycle`
+- [x] L02 [P0/I/契约] 显式参数覆盖优先级与 factory 策略：`testExplicitParameterOverrideWinsAndFactoryStrategiesAreAppliedAtConsumerResolution`
+- [x] L03 [P1/I/契约] factory 的 Eager 回退：`testEagerFallbackRunsFactoryNormally`
+- [x] L04 [P1/I/契约] 内部类的 unsupported 策略：`testInternalClassUsesUnsupportedStrategyBeforeCreatingNativeProxy`
+- [x] L05 [P1/I/契约] variadic 与相对类型统一拒绝：`testVariadicAndRelativeTypesAreUnresolvableRegardlessOfUnsupportedStrategy`
+- [x] L06 [P1/I/契约] alias 与 contextual binding：`testAliasAndContextualBindingsRetainTheirResolutionSemantics`
+- [x] L07 [P0/I/契约] 已缓存 singleton 与多个代理共享 actual：`testExistingSingletonIsInjectedDirectlyAndPendingProxiesShareTheActualSingleton`
+- [x] L08 [P1/I/契约] 绑定变化后的原生类型兼容性检查：`testIncompatibleBindingChangeIsRejectedByNativeProxy`
+- [x] L09 [P0/I/契约] 无状态织入方法初始化与拦截：`testStatelessAopMethodInitializesAndEntersAop`
+- [x] L10 [P0/I/契约] 有状态织入方法、重复调用与瞬态类名稳定：`testStatefulMethodCombinesLazyInitializationWithAopSubclass`
+- [x] L11 [P0/I/契约] AOP singleton 共享与缓存直接注入：`testLazyAopProxiesShareSingletonAndCachedInstanceIsInjectedDirectly`
+- [x] L12 [P0/I/契约] 继承构造函数的实际消费者上下文与初始化后隔离：`testInheritedConstructorRetainsActualConsumerContextDuringInitialization`
+
+L12 覆盖继承构造函数的构造延迟、显式初始化采用子类 contextual binding，以及初始化后全局和父类解析不受污染。测试通过不代表已覆盖全部 Lazy 边界：异常重试副作用、身份敏感拦截器、跨 scoped 生命周期等尚不能由以上测试给出完整保证。
 
 ### V：全套验收
 
@@ -209,12 +197,18 @@
 
 | 范围 | 命令 | 当前结果 | 用途 |
 | --- | --- | --- | --- |
-| 支持范围 | `composer test` | 130 tests / 588 assertions，通过 | 发布和 CI 门禁 |
+| 支持范围 | `composer test` | 142 tests / 653 assertions，通过 | 发布和 CI 门禁 |
 | Unit | `composer test:unit` | 45 tests / 169 assertions，通过 | 支持范围单元回归 |
-| Integration | `composer test:integration` | 67 tests / 308 assertions，通过 | 支持范围集成回归 |
+| Integration | `composer test:integration` | 79 tests / 373 assertions，通过 | 支持范围集成回归 |
 | Process | `composer test:process` | 18 tests / 111 assertions，通过 | 支持范围进程回归 |
-| 上游探针 | `composer test:upstream` | 10 tests / 30 assertions，1 error、9 failures、1 warning | 复现登记的 Ray AOP 限制 |
-| 完整诊断 | `composer test:all` | 140 tests / 614 assertions，1 error、9 failures、1 warning | 确认无登记外失败 |
+| 上游探针 | `composer test:upstream` | 10 tests / 56 assertions，1 error、8 failures、1 warning | 复现登记的 Ray AOP 限制 |
+| 完整诊断 | `composer test:all` | 151 tests / 674 assertions，1 error、9 failures、1 warning | 确认无登记外失败 |
+
+L12 修复前的本日补充执行：`php vendor/bin/phpunit --exclude-group upstream --order-by=reverse` 为 141 tests / 646 assertions，通过；单独运行 `LazyInjectionTest.php` 为 11 tests / 53 assertions，通过。`composer analysis`、`composer format:check`（147 个文件）及 `composer validate --strict` 均通过。
+
+L12 修复后补充验证：`composer test` 为 142 tests / 653 assertions；`composer test:integration` 为 79 tests / 373 assertions；`php vendor/bin/phpunit tests/Integration/LazyInjectionTest.php` 为 12 tests / 60 assertions，均通过。`composer analysis` 和 `composer format:check` 均通过。上表 Unit、Process、上游探针和完整诊断保留修复前的本日执行结果。
+
+G07 在两种诊断运行中出现不同结果，因此断言数不能简单相加；失败时会提前结束部分断言。定向压力实验中，100 次执行有 68 次失败。
 
 ## 第三部分：失败测试列表
 
@@ -231,7 +225,7 @@
 | S05 引用返回 | 代理保留 `&`，修改返回引用后目标状态变为 `changed` | 代理覆盖签名遗漏 `&`，加载时兼容性致命错误，退出码 255 | Ray AOP 签名生成及调用链按值返回 | 搁置；上游问题 |
 | S08 `_setBindings` 冲突 | 生成前以明确 `InvalidArgumentException` 拒绝并指出冲突成员 | 产生 `Undefined array key` warning，随后抛 `TypeError` | Ray AOP 未检查代理内部保留成员冲突 | 搁置；上游问题 |
 | S10 构造期间调用标记方法 | 构造阶段安全执行，构造后正常拦截 | 未安装绑定时读取空项，`ReflectiveMethodInvocation` 收到 null 并抛 `TypeError` | Ray AOP 在目标构造完成后才调用 `_setBindings()` | 搁置；上游问题 |
-| G07 Windows 多进程并发生成 | 并发进程发布并复用同一个完整代理文件 | 定向压力复测 100 次中 68 次抛出 `Ray\Aop\Exception\NotWritableException`；单次运行可能通过 | Ray AOP 先写临时文件，再以 `rename()` 发布到同一目标；Windows 不提供其所依赖的 POSIX 式覆盖语义，竞争失败被报告为不可写 | 搁置；Windows 优先暴露的上游跨平台兼容性问题 |
+| G07 Windows 多进程并发生成 | 并发进程发布并复用同一个完整代理文件 | 完整诊断抛出同类异常，单独 upstream 运行通过；定向压力复测 100 次中 68 次抛出 `Ray\Aop\Exception\NotWritableException`；单次运行可能通过 | Ray AOP 先写临时文件，再以 `rename()` 发布到同一目标；Windows 不提供其所依赖的 POSIX 式覆盖语义，竞争失败被报告为不可写 | 搁置；Windows 优先暴露的上游跨平台兼容性问题 |
 
 #### 当前 upstream 失败定位
 
@@ -242,15 +236,4 @@
 
 以上测试均带有 PHPUnit `#[Group('upstream')]`，并保留原始成功契约断言。
 
-### 历史失败，现已处理
-
-| 编号/场景 | 预期结果 | 实际结果（修复前） | 原因 | 是否处理 |
-| --- | --- | --- | --- | --- |
-| T02 逆序运行隔离 | bootstrap 加载验证不受其他测试顺序影响 | Integration 先加载 fixture 后，T02 错误认定 bootstrap 提前加载 | 测试依赖同一 PHPUnit 进程中的全局类加载状态 | 是；移入独立子进程 |
-| C14 SelfBuilding 自身委托 | 遵循 Illuminate SelfBuilding 普通构造回退 | 被误判为 AOP 循环依赖 | SelfBuilding 委托父容器前错误受 buildStack 条件限制 | 是；统一委托父容器处理 |
-| F05 Reflection getMethods | 与原生 ReflectionClass 的 filter 语义一致 | 始终只返回 public 方法，忽略 filter | 包装器丢弃 `$filter` 参数 | 是；向原生 getMethods 传递 filter 后包装结果 |
-| G08 生成目录位于扫描树 | 配置阶段阻止代理文件再次成为扫描目标 | 生成代理保留 Provider Attribute，并被 resolver 再次识别 | 未限制生成目录与扫描树的关系 | 是；要求绝对且已存在的生成目录，规范化、解析 symlink 后使用 `Path::isBasePath()` 拒绝嵌套 |
-
-### 上游问题处置原则
-
-本报告中的 A06、S02、S03、S04、S05、S08、S10、G07 均确认发生在 Ray AOP 2.20.2 的代理生成、参数采集、绑定生命周期或代理文件发布流程中，当前统一搁置：不修改 vendor、不降低断言、不用 skip 或空测试制造绿灯。G07 是 Windows 优先暴露的问题，但其他不支持原子覆盖式 `rename()` 的文件系统也可能受影响，因此不把影响范围绝对限定为 Windows。只有上游发布修复或项目引入可维护的依赖补丁，并完成对应编号回归后，才更新其 `[ ]` 状态。
+详细的影响范围、规避方式和上游修复条件见[aop 不支持能力报告](unsupported%20capabilities%20(zh).md)。

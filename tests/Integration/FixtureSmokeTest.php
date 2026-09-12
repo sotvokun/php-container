@@ -14,7 +14,7 @@ final class FixtureSmokeTest extends IsolatedTestCase
     public function testT02T03T04FixturesCanBeWovenFromRealFilesInAnIsolatedDirectory(): void
     {
         $container = $this->container();
-        $container->withAop([$this->fixtureDirectory()], $this->temporaryDirectory->generatedClasses());
+        $container->enableAop([$this->fixtureDirectory()], $this->temporaryDirectory->generatedClasses());
 
         $service = $container->make(GreetingService::class);
 

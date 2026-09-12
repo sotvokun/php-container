@@ -16,7 +16,7 @@ $temporaryDirectory = new TemporaryDirectory();
 
 try {
     $container = new Container();
-    $container->withAop(
+    $container->enableAop(
         [dirname(__DIR__, 2) . '/Fixtures/Aop'],
         $temporaryDirectory->generatedClasses(),
     );

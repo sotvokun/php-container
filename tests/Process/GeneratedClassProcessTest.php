@@ -56,7 +56,7 @@ final class GeneratedClassProcessTest extends TestCase
         self::assertSame(['before', 'after'], $second['events']);
     }
 
-    public function testG05CacheKeyTracksMtimeBindingAndDirectoryButNotSourceContent(): void
+    public function testG05CacheKeyTracksMtimeAndDirectoryButNotInterceptorStateOrSourceContent(): void
     {
         $root = $this->temporaryDirectory->path() . '/source';
         self::assertTrue(mkdir($root));
@@ -74,8 +74,8 @@ final class GeneratedClassProcessTest extends TestCase
         self::assertSame(2, $changedMtime['files']);
         self::assertNotSame($changedMtime['class'], $differentDirectory['class']);
         self::assertSame(1, $differentDirectory['files']);
-        self::assertNotSame($changedMtime['class'], $differentBinding['class']);
-        self::assertSame(3, $differentBinding['files']);
+        self::assertSame($changedMtime['class'], $differentBinding['class']);
+        self::assertSame(2, $differentBinding['files']);
     }
 
     public function testG06CorruptCacheFailsDiagnosticallyAndACleanDirectoryStillWorks(): void

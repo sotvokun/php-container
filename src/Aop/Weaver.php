@@ -11,6 +11,9 @@ use Sotvokun\Container\Aop\Adapter\RayMethodInterceptorAdapter;
 
 final class Weaver implements WeaverInterface
 {
+    /** @var array<class-string, class-string> */
+    private array $generatedClasses = [];
+
     /**
      * @param non-empty-string $generatedClassDirectory
      */
@@ -29,8 +32,13 @@ final class Weaver implements WeaverInterface
      */
     public function newInstance(string $class, array $arguments): object
     {
+        $generated = $this->weave($class);
+        $bind = $this->bindFor($class);
         /** @var T $instance */
-        $instance = $this->createRayWeaver($class)->newInstance($class, $arguments);
+        $instance = new $generated(...$arguments);
+        if ($instance instanceof \Ray\Aop\WeavedInterface) {
+            $instance->_setBindings($bind->getBindings());
+        }
 
         return $instance;
     }
@@ -41,7 +49,16 @@ final class Weaver implements WeaverInterface
      */
     public function weave(string $class): string
     {
-        return $this->createRayWeaver($class)->weave($class);
+        if (isset($this->generatedClasses[$class])) {
+            return $this->generatedClasses[$class];
+        }
+
+        $bind = new Bind();
+        foreach ($this->resolver->metadataFor($class)->methods as $method => $attributes) {
+            $bind->bindInterceptors($method, []);
+        }
+
+        return $this->generatedClasses[$class] = (new \Ray\Aop\Weaver($bind, $this->generatedClassDirectory))->weave($class);
     }
 
     /**
@@ -60,14 +77,6 @@ final class Weaver implements WeaverInterface
             $interceptors[] = new RayMethodInterceptorAdapter($instance);
         }
         return $interceptors;
-    }
-
-    /**
-     * @param class-string $class
-     */
-    private function createRayWeaver(string $class): \Ray\Aop\Weaver
-    {
-        return new \Ray\Aop\Weaver($this->bindFor($class), $this->generatedClassDirectory);
     }
 
     /**

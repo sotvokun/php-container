@@ -1,6 +1,6 @@
 # AOP 不支持能力报告（中文）
 
-记录日期：2026-09-11。适用依赖：Ray AOP 2.20.2。状态：以下问题均确认为上游限制，当前统一搁置。
+适用依赖：Ray AOP 2.20.2。状态：以下问题均确认为上游限制，当前统一搁置。
 
 本报告汇总 A06、S02、S03、S04、S05、S08、S10、G07。全部对应 PHPUnit `upstream` group：`composer test` 默认排除该组，作为当前支持范围的绿色发布门禁；`composer test:upstream` 单独复现这些限制；`composer test:all` 执行完整诊断集。项目保留真实失败测试，不修改 vendor、不降低断言、不使用永久 skip；只有上游发布修复或项目采用可维护的依赖补丁并完成回归后，才解除对应限制。
 
@@ -128,4 +128,4 @@
 
 集中涉及的上游文件为 `vendor/ray/aop/src/AopCode.php`、`MethodSignatureString.php`、`ReflectiveMethodInvocation.php`、`InterceptTrait.php`、`ReadOnlyInterceptTrait.php`、`WeavedInterface.php`、`Weaver.php`、`Compiler.php` 和 `FilePutContents.php`。上游项目为 `ray-di/Ray.Aop`。
 
-完整的测试状态、失败实际结果及测试架构见 `docs/tests/2026-09-11 TEST REPORT (ZH).md`。
+完整的测试状态、失败实际结果及测试架构见[测试报告](test%20report%20(zh).md)。

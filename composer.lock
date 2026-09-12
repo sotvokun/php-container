@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f1decb578702d20a85ebc51038bdc92f",
+    "content-hash": "5588c2b5125be03ac3e40962494b26d0",
     "packages": [
         {
             "name": "composer/class-map-generator",
@@ -3023,7 +3023,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.3"
+        "php": "^8.4"
     },
     "platform-dev": {},
     "plugin-api-version": "2.9.0"
